@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SPOR">
+<meta name="format-detection" content="telephone=no">
+<title>SPOR·KAMERA</title>
+<style>
+:root{--fg:#efe9dc;--dim:#efe9dc80;--acc:#ffb347}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:var(--fg);font:500 13px/1.3 ui-monospace,"SF Mono",Menlo,Consolas,monospace;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ui{transition:opacity .3s}
+body.clean .ui{opacity:0;pointer-events:none}
+.top{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 10px) 16px 18px;display:flex;justify-content:space-between;align-items:baseline;pointer-events:none;background:linear-gradient(#000b,#0000)}
+.logo{letter-spacing:.28em;font-weight:700;font-size:13px}
+.logo b{color:var(--acc);font-weight:700}
+.stat{color:var(--dim);font-size:10px;letter-spacing:.08em;text-align:right}
+.frz{color:#7fd8ff}
+.bottom{position:fixed;left:0;right:0;bottom:0;padding:18px 0 calc(env(safe-area-inset-bottom) + 26px);background:linear-gradient(#0000,#000d 45%)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 16px;scrollbar-width:none;touch-action:pan-x}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid #fff3;border-radius:99px;padding:8px 14px;background:#0009;color:var(--fg);font:inherit;font-size:12px;letter-spacing:.1em}
+.chip.on{border-color:var(--acc);color:#000;background:var(--acc)}
+.bar{display:flex;justify-content:space-evenly;align-items:center}
+.btn{width:50px;height:50px;border-radius:50%;border:1px solid #fff3;background:#000a;color:var(--fg);font:inherit;font-size:19px;display:grid;place-items:center;position:relative}
+.btn small{position:absolute;top:56px;font-size:9px;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
+.btn.on{border-color:#7fd8ff;color:#7fd8ff}
+.shutter{width:72px;height:72px;border:3px solid var(--fg);background:transparent}
+.shutter i{width:56px;height:56px;border-radius:50%;background:var(--fg);display:block;transition:transform .12s}
+.shutter:active i{transform:scale(.88)}
+.shutter small{top:78px}
+.rec{--p:0}
+.rec i{width:18px;height:18px;border-radius:50%;background:#ff3b30;display:block;transition:.15s}
+.rec.on{border-color:transparent;background:conic-gradient(#ff3b30 calc(var(--p)*1turn),#fff3 0)}
+.rec.on::before{content:"";position:absolute;inset:3px;border-radius:50%;background:#000}
+.rec.on i{position:relative;border-radius:4px;width:16px;height:16px}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:72vh;overflow-y:auto;background:#0c0c0cf4;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid #fff2;border-radius:20px 20px 0 0;padding:10px 18px calc(env(safe-area-inset-bottom) + 20px);transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);touch-action:pan-y;z-index:5}
+.sheet.open{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:#fff3;margin:0 auto 12px}
+.sheet h3{font-size:10px;letter-spacing:.25em;color:var(--dim);font-weight:500;margin:16px 0 6px}
+.row{display:grid;grid-template-columns:104px 1fr 46px;align-items:center;gap:10px;min-height:40px}
+.row label{font-size:11px;letter-spacing:.06em}
+.row output{font-size:10px;color:var(--dim);text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:#fff3;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--fg);margin-top:-9.5px;border:0}
+input[type=range]::-moz-range-track{height:3px;background:#fff3}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--fg);border:0}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button,.src button{flex:1;min-width:0;border:1px solid #fff3;background:#0008;color:var(--fg);font:inherit;font-size:11px;letter-spacing:.06em;padding:11px 6px;border-radius:12px}
+.seg button.on{border-color:var(--acc);color:var(--acc)}
+.src{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.src button{padding:16px 8px;text-align:left;font-size:12px}
+.src button span{display:block;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:.02em}
+.hint{font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 52px);transform:translate(-50%,-10px);max-width:88vw;background:#111e;border:1px solid #fff2;border-radius:12px;padding:10px 14px;font-size:11px;line-height:1.45;opacity:0;transition:.25s;pointer-events:none;z-index:9;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.err{position:fixed;inset:0;display:none;place-items:center;padding:30px;text-align:center;line-height:1.6}
+input[type=file]{display:none}
+.ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(env(safe-area-inset-top) + 20px) 28px calc(env(safe-area-inset-bottom) + 20px);background:#000d;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-align:center}
+.ov[hidden]{display:none}
+.ov h1{font-size:22px;letter-spacing:.3em;font-weight:700}
+.ov h1 b{color:var(--acc)}
+.ov p{font-size:11px;color:var(--dim);line-height:1.6;max-width:300px}
+.big{width:100%;max-width:300px;border:0;border-radius:16px;padding:17px;font:inherit;font-size:14px;letter-spacing:.12em;background:var(--acc);color:#000;font-weight:700}
+.big.sec{background:#fff1;color:var(--fg);border:1px solid #fff3;font-weight:500}
+.ov img,.ov video{max-width:78vw;max-height:52vh;border-radius:12px;border:1px solid #fff2;background:#111}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="err" id="err"></div>
+
+<div class="top ui">
+  <div class="logo">SPOR<b>·</b>KAMERA</div>
+  <div class="stat" id="stat">–</div>
+</div>
+
+<div class="bottom ui" id="bottom">
+  <div class="chips" id="chips"></div>
+  <div class="bar">
+    <button class="btn" id="bSrc">◐<small>QUELLE</small></button>
+    <button class="btn" id="bFrz">❄<small>EINFRIEREN</small></button>
+    <button class="btn shutter" id="bSnap"><i></i><small>FOTO</small></button>
+    <button class="btn rec" id="bRec"><i></i><small>CLIP 10S</small></button>
+    <button class="btn" id="bSet">≡<small>REGLER</small></button>
+  </div>
+</div>
+
+<div class="sheet ui" id="srcSheet">
+  <div class="grab"></div>
+  <h3>QUELLE</h3>
+  <div class="src">
+    <button id="sLive">◉ Live-Kamera<span>Echtzeit, Rückkamera</span></button>
+    <button id="sFlip">⇄ Kamera wechseln<span>Front ↔ Rück</span></button>
+    <button id="sShot">◎ Aufnahme<span>Kamera-App: Foto/Video</span></button>
+    <button id="sLib">▤ Galerie<span>Bild oder Video wählen</span></button>
+    <button id="sDemo">✳ Demo<span>Generierte Szene</span></button>
+    <button id="sReset">↺ Neu aussäen<span>Spuren löschen</span></button>
+  </div>
+  <p class="hint">Finger auf dem Bild = Nährstoff streuen (in Reglern auf Gift umschaltbar). Doppeltipp blendet die Oberfläche aus. Im Claude-Fenster ist die Live-Kamera gesperrt – dann „Aufnahme“ nutzen oder die HTML-Datei direkt im Browser öffnen.</p>
+</div>
+
+<div class="sheet ui" id="setSheet">
+  <div class="grab"></div>
+  <h3>PINSEL</h3>
+  <div class="seg" id="segBrush"><button data-v="1" class="on">Nährstoff</button><button data-v="-1">Gift</button><button data-v="0">Aus</button></div>
+  <h3>SPOREN</h3>
+  <div class="seg" id="segAg"><button data-v="0">65 k</button><button data-v="1" class="on">262 k</button><button data-v="2">1 M</button></div>
+  <h3>AUFLÖSUNG</h3>
+  <div class="seg" id="segRes"><button data-v="0">Akku</button><button data-v="1" class="on">Normal</button><button data-v="2">Scharf</button></div>
+  <div id="sliders"></div>
+</div>
+
+<input type="file" id="fShot" accept="image/*,video/*" capture="environment">
+<input type="file" id="fLib" accept="image/*,video/*">
+<video id="vid" playsinline webkit-playsinline muted autoplay loop style="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
+<div class="toast" id="toast"></div>
+<div class="ov" id="startOv">
+  <h1>SPOR<b>·</b>KAMERA</h1>
+  <p>Kanten im Kamerabild säen Sporen, die live auf der GPU wachsen.</p>
+  <button class="big" id="goLive">◉ KAMERA STARTEN</button>
+  <button class="big sec" id="goDemo">✳ DEMO</button>
+  <p>Tipp: Teilen → „Zum Home-Bildschirm“ für Vollbild-App.</p>
+</div>
+<div class="ov" id="saveOv" hidden>
+  <div id="savePrev"></div>
+  <button class="big" id="saveGo">↑ SICHERN / TEILEN</button>
+  <button class="big sec" id="saveX">VERWERFEN</button>
+  <p>Im Teilen-Menü „Bild sichern“ bzw. „Video sichern“ wählen.</p>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const cv=$('#c');
+const gl=cv.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,premultipliedAlpha:false,powerPreference:'high-performance'});
+const fail=m=>{const e=$('#err');e.style.display='grid';e.textContent=m;};
+if(!gl){fail('WebGL2 nicht verfügbar.');return;}
+const extF=gl.getExtension('EXT_color_buffer_float');
+gl.getExtension('EXT_color_buffer_half_float');
+gl.getExtension('EXT_float_blend');
+if(!extF){fail('Dieses Gerät kann keine Float-Texturen rendern (EXT_color_buffer_float fehlt).');return;}
+
+/* ---------- toast ---------- */
+let tT;const toast=(m,ms=2600)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),ms);};
+
+/* ---------- shaders ---------- */
+const VS=`#version 300 es
+out vec2 uv;
+void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.-1.,0.,1.);}`;
+const H=`#version 300 es
+precision highp float;precision highp int;
+in vec2 uv;out vec4 o;
+`;
+const FS_EDGE=H+`
+uniform sampler2D uSrc;uniform vec2 uScale,uTx;uniform float uMirror,uLo,uHi;
+vec2 cov(vec2 u){if(uMirror>.5)u.x=1.-u.x;return (u-.5)*uScale+.5;}
+float L(vec2 u){return dot(texture(uSrc,cov(u)).rgb,vec3(.299,.587,.114));}
+void main(){vec2 d=uTx*1.5;
+float tl=L(uv+vec2(-d.x,d.y)),t=L(uv+vec2(0.,d.y)),tr=L(uv+d),l=L(uv-vec2(d.x,0.)),r=L(uv+vec2(d.x,0.)),bl=L(uv-d),b=L(uv-vec2(0.,d.y)),br=L(uv+vec2(d.x,-d.y));
+float gx=(tr+2.*r+br)-(tl+2.*l+bl),gy=(tl+2.*t+tr)-(bl+2.*b+br);
+o=vec4(smoothstep(uLo,uHi,length(vec2(gx,gy))),L(uv),0.,1.);}`;
+const FS_FOOD=H+`
+uniform sampler2D uFood;uniform vec3 uBrush;uniform float uR,uDecay,uAspect;
+void main(){float f=texture(uFood,uv).r*uDecay;vec2 d=uv-uBrush.xy;d.x*=uAspect;
+f+=uBrush.z*exp(-dot(d,d)/(uR*uR));o=vec4(clamp(f,-3.,3.),0.,0.,1.);}`;
+const FS_AGENT=H+`
+uniform sampler2D uAg,uTrail,uEdge,uFood;
+uniform vec2 uRes;uniform float uSA,uSD,uRA,uSpeed,uEdgeW,uFoodW,uPhoto,uResp,uFrame,uForce;
+uint hh(uint x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;return x;}
+float rnd(inout uint s){s=hh(s);return float(s>>8)*(1./16777216.);}
+float field(vec2 p){vec2 e=texture(uEdge,p).rg;return e.r*uEdgeW+texture(uFood,p).r*uFoodW+(e.g-.5)*uPhoto;}
+float sense(vec2 p,float a){vec2 q=fract(p+vec2(cos(a),sin(a))*uSD/uRes);return texture(uTrail,q).r+field(q);}
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec4 A=texelFetch(uAg,c,0);
+uint s=hh(uint(c.x)*1973u^hh(uint(c.y)*9277u^(uint(uFrame)*26699u)));
+vec2 p=A.xy;float a=A.z;
+if(uForce>.5||rnd(s)<uResp){
+ vec2 best=vec2(rnd(s),rnd(s));
+ for(int i=0;i<20;i++){vec2 q=vec2(rnd(s),rnd(s));float v=texture(uEdge,q).r*.9+max(texture(uFood,q).r,0.)*.6;if(rnd(s)<v*v+.002){best=q;break;}}
+ p=best;a=rnd(s)*6.2831853;
+}else{
+ float F=sense(p,a),Lf=sense(p,a+uSA),R=sense(p,a-uSA),r=rnd(s);
+ if(F>Lf&&F>R){}else if(F<Lf&&F<R)a+=(r-.5)*2.*uRA;else if(Lf>R)a+=uRA*r;else a-=uRA*r;
+ a=mod(a,6.2831853);
+ p=fract(p+vec2(cos(a),sin(a))*uSpeed/uRes);
+}
+o=vec4(p,a,1.);}`;
+const VS_DEP=`#version 300 es
+precision highp float;precision highp int;
+uniform highp sampler2D uAg;uniform float uAW;
+void main(){int w=int(uAW);ivec2 c=ivec2(gl_VertexID%w,gl_VertexID/w);vec4 A=texelFetch(uAg,c,0);
+gl_Position=vec4(A.xy*2.-1.,0.,1.);gl_PointSize=1.;}`;
+const FS_DEP=`#version 300 es
+precision highp float;uniform float uDep;out vec4 o;void main(){o=vec4(uDep,0.,0.,1.);}`;
+const FS_DIFF=H+`
+uniform sampler2D uTrail;uniform vec2 uTx;uniform float uDecay,uDiff;
+void main(){float c=texture(uTrail,uv).r,s=0.;
+for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)s+=texture(uTrail,uv+vec2(x,y)*uTx).r;
+o=vec4(mix(c,s/9.,uDiff)*uDecay,0.,0.,1.);}`;
+const FS_DISP=H+`
+uniform sampler2D uTrail,uSrc,uEdge,uFood;uniform vec2 uScale;
+uniform float uMirror,uCam,uSat,uGain,uEdgeShow,uTime;uniform vec3 uC1,uC2,uC3;
+vec3 ramp(float t){vec3 a=mix(vec3(0.),uC1,smoothstep(0.,.35,t));a=mix(a,uC2,smoothstep(.3,.72,t));return mix(a,uC3,smoothstep(.72,1.,t));}
+void main(){vec2 su=uv;if(uMirror>.5)su.x=1.-su.x;su=(su-.5)*uScale+.5;
+vec3 cam=texture(uSrc,su).rgb;float l=dot(cam,vec3(.299,.587,.114));cam=mix(vec3(l),cam,uSat)*uCam;
+float t=1.-exp(-texture(uTrail,uv).r*uGain);
+vec3 col=cam*(1.-.75*t)+ramp(t);
+col+=texture(uEdge,uv).r*uEdgeShow*uC1*.6;
+float f=texture(uFood,uv).r;col+=(f>0.?uC2:vec3(.7,.1,.25))*abs(f)*.07;
+vec2 q=uv-.5;col*=1.-dot(q,q)*.55;
+col+=(fract(sin(dot(gl_FragCoord.xy+uTime,vec2(12.9898,78.233)))*43758.5453)-.5)*.025;
+o=vec4(col,1.);}`;
+
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){const m=gl.getShaderInfoLog(s);fail('Shader-Fehler: '+m);throw m;}return s;}
+function prog(fs,vs=VS){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)){const m=gl.getProgramInfoLog(p);fail('Link-Fehler: '+m);throw m;}return {p,u:new Map()};}
+const pEdge=prog(FS_EDGE),pFood=prog(FS_FOOD),pAgent=prog(FS_AGENT),pDep=prog(FS_DEP,VS_DEP),pDiff=prog(FS_DIFF),pDisp=prog(FS_DISP);
+const vao=gl.createVertexArray();gl.bindVertexArray(vao);
+
+function bindU(P,uni){gl.useProgram(P.p);let unit=0;
+  for(const k in uni){let l=P.u.get(k);if(l===undefined){l=gl.getUniformLocation(P.p,k);P.u.set(k,l);}if(l===null)continue;
+    const v=uni[k];
+    if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit++);}
+    else if(typeof v==='number')gl.uniform1f(l,v);
+    else if(v.length===2)gl.uniform2fv(l,v);else if(v.length===3)gl.uniform3fv(l,v);else gl.uniform4fv(l,v);}}
+function pass(P,target,w,h,uni){bindU(P,uni);gl.bindFramebuffer(gl.FRAMEBUFFER,target);gl.viewport(0,0,w,h);gl.drawArrays(gl.TRIANGLES,0,3);}
+
+function mkTex(w,h,ifmt,fmt,type,filter,wrap){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,ifmt,w,h,0,fmt,type,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filter);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filter);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrap);return t;}
+function mkTarget(w,h,ifmt,fmt,type,filter,wrap){const t=mkTex(w,h,ifmt,fmt,type,filter,wrap),f=gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);return {t,f,del(){gl.deleteTexture(t);gl.deleteFramebuffer(f);}};}
+function mkPair(...a){const p={a:mkTarget(...a),b:mkTarget(...a),swap(){[p.a,p.b]=[p.b,p.a];},del(){p.a.del();p.b.del();}};return p;}
+
+/* ---------- source ---------- */
+const srcTex=mkTex(1,1,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,gl.LINEAR,gl.CLAMP_TO_EDGE);
+let srcW=1,srcH=1,srcKind='demo',mirror=false,imgEl=null,imgDirty=false,stream=null,facing='environment';
+const vid=$('#vid');
+const demo=document.createElement('canvas');demo.width=360;demo.height=640;const dc=demo.getContext('2d');
+function drawDemo(t){const w=360,h=640;dc.fillStyle='#060606';dc.fillRect(0,0,w,h);
+  dc.save();dc.translate(w/2,h*.42);dc.rotate(Math.sin(t*.23)*.25);dc.fillStyle='#e8e8e8';dc.font='900 112px Helvetica,Arial,sans-serif';dc.textAlign='center';dc.textBaseline='middle';dc.fillText('SPOR',0,0);dc.restore();
+  dc.strokeStyle='#ddd';dc.lineWidth=5;
+  for(let i=0;i<6;i++){const a=t*.35+i*1.047,r=40+i*14;dc.beginPath();dc.arc(w/2+Math.cos(a)*110,h*.72+Math.sin(a*1.3)*80,r*.5,0,7);dc.stroke();}
+  dc.lineWidth=3;dc.beginPath();for(let i=0;i<=200;i++){const u=i/200*6.283;const x=w/2+Math.sin(u*3+t*.4)*150,y=h*.16+Math.sin(u*2)*60;i?dc.lineTo(x,y):dc.moveTo(x,y);}dc.stroke();}
+function upload(el,w,h){gl.bindTexture(gl.TEXTURE_2D,srcTex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,el);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);srcW=w;srcH=h;}
+function updateSrc(t){
+  if(srcKind==='demo'){drawDemo(t);upload(demo,360,640);return true;}
+  if(srcKind==='video'){if(vid.readyState>=2&&vid.videoWidth){upload(vid,vid.videoWidth,vid.videoHeight);return true;}return false;}
+  if(srcKind==='image'&&imgDirty){upload(imgEl,imgEl.naturalWidth,imgEl.naturalHeight);imgDirty=false;return true;}
+  return false;}
+function stopStream(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}vid.srcObject=null;}
+async function startLive(){
+  try{if(!navigator.mediaDevices?.getUserMedia)throw 0;
+    stopStream();
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:720}},audio:false});
+    vid.removeAttribute('src');vid.srcObject=stream;vid.muted=true;await vid.play();
+    srcKind='video';mirror=facing==='user';reseed();toast(facing==='user'?'Frontkamera live':'Rückkamera live',1400);
+  }catch(e){toast('Live-Kamera hier gesperrt → „Aufnahme“ nutzen (öffnet Kamera-App) oder die HTML direkt im Browser öffnen.',5200);}}
+function loadFile(f){if(!f)return;const url=URL.createObjectURL(f);stopStream();
+  if(f.type.startsWith('video')){vid.srcObject=null;vid.src=url;vid.loop=true;vid.muted=true;vid.play().catch(()=>{});srcKind='video';mirror=false;reseed();}
+  else{const im=new Image();im.onload=()=>{imgEl=im;imgDirty=true;srcKind='image';mirror=false;frozen=false;setFrz();reseed();};im.src=url;}}
+
+/* ---------- params & presets ---------- */
+const P={sa:.5,sd:14,ra:.3,speed:1.2,decay:.955,diffuse:.5,dep:.05,edge:4,photo:0,respawn:.003,steps:2,cam:.35,camSat:.4,gain:.35,edgeShow:0};
+const PRESETS={
+ 'MYZEL':   {sa:.55,sd:14,ra:.28,speed:1.1,decay:.962,diffuse:.45,dep:.05,edge:4,photo:0,respawn:.003,cam:.35,camSat:.3,gain:.35,pal:['#5a2a10','#ffb347','#fff3dc']},
+ 'PHYSARUM':{sa:.42,sd:9,ra:.45,speed:1.5,decay:.93,diffuse:.6,dep:.06,edge:3,photo:0,respawn:.002,cam:.25,camSat:.2,gain:.4,pal:['#3a3200','#ffd400','#fffbe0']},
+ 'NEURON':  {sa:.9,sd:26,ra:.22,speed:2,decay:.975,diffuse:.3,dep:.035,edge:6,photo:0,respawn:.004,cam:.2,camSat:.0,gain:.5,pal:['#14005a','#ff2bd6','#9ff7ff']},
+ 'FLECHTE': {sa:1.15,sd:4,ra:.8,speed:.6,decay:.9,diffuse:.7,dep:.08,edge:7,photo:1.5,respawn:.006,cam:.45,camSat:.5,gain:.35,pal:['#0e2a10','#9be15d','#f4ffd6']},
+ 'SPOREN':  {sa:.3,sd:30,ra:.12,speed:3,decay:.86,diffuse:.2,dep:.09,edge:10,photo:0,respawn:.02,cam:.3,camSat:.3,gain:.45,pal:['#200a3a','#a46bff','#ffe9ff']},
+ 'SCHATTEN':{sa:.6,sd:12,ra:.35,speed:1.2,decay:.95,diffuse:.5,dep:.05,edge:1,photo:-6,respawn:.004,cam:.5,camSat:.6,gain:.35,pal:['#002a2a','#00e0c0','#e0fff8']}
+};
+let pal=[[0,0,0],[0,0,0],[0,0,0]];
+const hex=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
+const SL=[['sa','Sensorwinkel',.05,1.6,.01],['sd','Sensordistanz',1,40,.5],['ra','Drehung',.02,1.2,.01],['speed','Tempo',.2,4,.05],
+ ['decay','Halt',.8,.995,.001],['diffuse','Diffusion',0,1,.01],['dep','Ablage',.01,.3,.005],['edge','Kantenhunger',0,20,.1],
+ ['photo','Phototaxis',-8,8,.1],['respawn','Sporenflug',0,.05,.0005],['steps','Schritte/Frame',1,4,1],
+ ['cam','Kamerabild',0,1,.01],['camSat','Farbe',0,1,.01],['gain','Leuchten',.05,2,.01],['edgeShow','Kanten zeigen',0,1,.01]];
+const sl=$('#sliders');const inputs={};
+const fmt=v=>Math.abs(v)>=10?v.toFixed(1):v<.01&&v>0?v.toFixed(4):v.toFixed(Math.abs(v)<1?3:2);
+for(const [k,n,mi,ma,st] of SL){const r=document.createElement('div');r.className='row';
+  r.innerHTML=`<label>${n}</label><input type="range" min="${mi}" max="${ma}" step="${st}"><output></output>`;
+  const i=r.querySelector('input'),o=r.querySelector('output');i.value=P[k];o.textContent=fmt(+P[k]);
+  i.addEventListener('input',()=>{P[k]=+i.value;o.textContent=fmt(P[k]);markChip(null);});inputs[k]={i,o};sl.appendChild(r);}
+const chipBox=$('#chips');
+function markChip(name){chipBox.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.n===name));}
+function applyPreset(name){const p=PRESETS[name];for(const k in p){if(k==='pal')continue;P[k]=p[k];if(inputs[k]){inputs[k].i.value=p[k];inputs[k].o.textContent=fmt(p[k]);}}
+  pal=p.pal.map(hex);markChip(name);}
+for(const n in PRESETS){const b=document.createElement('button');b.className='chip';b.textContent=n;b.dataset.n=n;b.onclick=()=>applyPreset(n);chipBox.appendChild(b);}
+
+/* ---------- buffers ---------- */
+const Q={ag:1,res:1};
+let simW=0,simH=0,AW=512,trail,edgeT,food,agents,needInit=true,srcChanged=true;
+const F16=[gl.RGBA16F,gl.RGBA,gl.HALF_FLOAT];
+function alloc(){const dpr=Math.min(devicePixelRatio||1,2),cw=innerWidth,ch=innerHeight,long=Math.max(cw,ch)*dpr;
+  const cap=[640,960,1400][Q.res],s=Math.min(1,cap/long);
+  simW=Math.max(64,Math.round(cw*dpr*s));simH=Math.max(64,Math.round(ch*dpr*s));
+  const ds=Math.min(1,s*1.6);cv.width=Math.round(cw*dpr*ds);cv.height=Math.round(ch*dpr*ds);
+  trail&&trail.del();edgeT&&edgeT.del();food&&food.del();
+  trail=mkPair(simW,simH,...F16,gl.LINEAR,gl.REPEAT);
+  food=mkPair(simW,simH,...F16,gl.LINEAR,gl.CLAMP_TO_EDGE);
+  edgeT=mkTarget(simW,simH,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE,gl.LINEAR,gl.CLAMP_TO_EDGE);
+  srcChanged=true;needInit=true;}
+function allocAgents(){AW=[256,512,1024][Q.ag];agents&&agents.del();agents=mkPair(AW,AW,gl.RGBA32F,gl.RGBA,gl.FLOAT,gl.NEAREST,gl.CLAMP_TO_EDGE);needInit=true;}
+function reseed(){for(const t of [trail.a,trail.b]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.f);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}srcChanged=true;needInit=true;}
+alloc();allocAgents();
+let rT;addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(alloc,200);});
+
+/* ---------- cover scale ---------- */
+function coverScale(){const A=simW/simH,S=srcW/srcH;return S>A?[A/S,1]:[1,S/A];}
+
+/* ---------- brush ---------- */
+const brush={on:false,x:0,y:0};let brushMode=1;
+let lastTap=0;
+cv.addEventListener('pointerdown',e=>{closeSheets();const n=performance.now();
+  if(n-lastTap<300){document.body.classList.toggle('clean');lastTap=0;}else lastTap=n;
+  brush.on=true;setB(e);cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(brush.on)setB(e);});
+const up=()=>brush.on=false;cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+function setB(e){brush.x=e.clientX/innerWidth;brush.y=1-e.clientY/innerHeight;}
+
+/* ---------- state / ui ---------- */
+let frozen=false,paused=false;
+const setFrz=()=>$('#bFrz').classList.toggle('on',frozen);
+$('#bFrz').onclick=()=>{frozen=!frozen;setFrz();if(srcKind==='video'){frozen?vid.pause():vid.play().catch(()=>{});}toast(frozen?'Bild eingefroren – Wachstum läuft weiter':'Live',1400);};
+const sheets=[$('#srcSheet'),$('#setSheet')];
+function closeSheets(){sheets.forEach(s=>s.classList.remove('open'));}
+function toggleSheet(s){const o=!s.classList.contains('open');closeSheets();if(o)s.classList.add('open');}
+$('#bSrc').onclick=()=>toggleSheet($('#srcSheet'));
+$('#bSet').onclick=()=>toggleSheet($('#setSheet'));
+$('#sLive').onclick=()=>{closeSheets();startLive();};
+$('#sFlip').onclick=()=>{facing=facing==='user'?'environment':'user';closeSheets();startLive();};
+$('#sShot').onclick=()=>{closeSheets();$('#fShot').click();};
+$('#sLib').onclick=()=>{closeSheets();$('#fLib').click();};
+$('#sDemo').onclick=()=>{closeSheets();stopStream();vid.removeAttribute('src');srcKind='demo';mirror=false;reseed();};
+$('#sReset').onclick=()=>{closeSheets();reseed();};
+$('#fShot').onchange=e=>{loadFile(e.target.files[0]);e.target.value='';};
+$('#fLib').onchange=e=>{loadFile(e.target.files[0]);e.target.value='';};
+function seg(id,fn){const el=$(id);el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));fn(+b.dataset.v);});}
+seg('#segBrush',v=>brushMode=v);
+seg('#segAg',v=>{Q.ag=v;allocAgents();});
+seg('#segRes',v=>{Q.res=v;alloc();});
+document.addEventListener('visibilitychange',()=>{paused=document.hidden;
+  if(!document.hidden&&stream){const tr=stream.getVideoTracks()[0];if(!tr||tr.readyState==='ended'||tr.muted)startLive();else vid.play().catch(()=>{});}});
+addEventListener('pageshow',()=>{if(stream)vid.play().catch(()=>{});});
+
+/* ---------- saving ---------- */
+let dl=null;(async()=>{try{if(window.claude&&claude.use)dl=await claude.use('downloads');}catch(e){}})();
+const stamp=()=>new Date().toISOString().replace(/[-:T]/g,'').slice(0,14);
+let pending=null,prevURL=null;
+async function saveBlob(blob,name){
+  if(dl){try{await dl.save({filename:name,data:blob});toast('Gespeichert',1400);return;}
+    catch(e){if(e&&e.code==='declined'){toast('Abgebrochen',1200);return;}if(e&&e.code==='rate_limited'){toast('Kurz warten…',1400);return;}}}
+  // iOS: Teilen braucht eine frische Tipp-Geste → Vorschau mit Button
+  pending={blob,name};if(prevURL)URL.revokeObjectURL(prevURL);prevURL=URL.createObjectURL(blob);
+  $('#savePrev').innerHTML=blob.type.startsWith('video')?`<video src="${prevURL}" autoplay loop muted playsinline></video>`:`<img src="${prevURL}" alt="">`;
+  $('#saveOv').hidden=false;}
+$('#saveX').onclick=()=>{$('#saveOv').hidden=true;$('#savePrev').innerHTML='';pending=null;};
+$('#saveGo').onclick=async()=>{if(!pending)return;const {blob,name}=pending;
+  try{const file=new File([blob],name,{type:blob.type});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});$('#saveX').onclick();return;}}
+  catch(e){if(e&&e.name==='AbortError')return;}
+  const a=document.createElement('a');a.href=prevURL;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  toast('Download gestartet',1400);};
+// 2D-Kopie des GL-Frames (robust auf iOS ohne preserveDrawingBuffer)
+const cap=document.createElement('canvas'),capx=cap.getContext('2d');
+function grab(){const w=cv.width&~1,h=cv.height&~1;if(cap.width!==w||cap.height!==h){cap.width=w;cap.height=h;}capx.drawImage(cv,0,0,w,h);}
+let snapReq=false;
+$('#bSnap').onclick=()=>{snapReq=true;};
+let rec=null,recStart=0;
+$('#bRec').onclick=()=>{
+  if(rec){rec.stop();return;}
+  if(!window.MediaRecorder||!cap.captureStream){toast('Clip-Aufnahme hier nicht unterstützt');return;}
+  const mt=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mt){toast('Kein Videoformat verfügbar');return;}
+  const chunks=[];grab();
+  try{rec=new MediaRecorder(cap.captureStream(30),{mimeType:mt,videoBitsPerSecond:10e6});}catch(e){toast('Aufnahme fehlgeschlagen');rec=null;return;}
+  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  rec.onstop=()=>{const ext=mt.includes('mp4')?'mp4':'webm';rec=null;$('#bRec').classList.remove('on');$('#bRec').style.setProperty('--p',0);
+    saveBlob(new Blob(chunks,{type:mt.split(';')[0]}),`spor_${stamp()}.${ext}`);};
+  rec.start(250);recStart=performance.now();$('#bRec').classList.add('on');};
+
+/* ---------- loop ---------- */
+let frame=0,fpsT=performance.now(),fpsN=0,fps=0;
+const stat=$('#stat');
+function loop(now){requestAnimationFrame(loop);
+  const t=now/1000;
+  fpsN++;if(now-fpsT>1000){fps=fpsN;fpsN=0;fpsT=now;
+    stat.innerHTML=`${fps} FPS · ${(AW*AW/1000|0)}k SPOREN<br>${simW}×${simH} · ${({demo:'DEMO',video:stream?'LIVE':'VIDEO',image:'FOTO'})[srcKind]}${frozen?' · <span class="frz">EINGEFROREN</span>':''}`;}
+  if(rec){const p=(now-recStart)/10000;$('#bRec').style.setProperty('--p',Math.min(1,p));if(p>=1)rec.stop();}
+  if(paused)return;
+  gl.disable(gl.BLEND);
+  const scale=coverScale(),tx=[1/simW,1/simH];
+  if(!frozen&&updateSrc(t))srcChanged=true;
+  if(srcChanged){pass(pEdge,edgeT.f,simW,simH,{uSrc:srcTex,uScale:scale,uTx:tx,uMirror:mirror?1:0,uLo:.08,uHi:.55});srcChanged=false;}
+  pass(pFood,food.b.f,simW,simH,{uFood:food.a.t,uBrush:[brush.x,brush.y,brush.on?brushMode*.35:0],uR:.035,uDecay:.996,uAspect:simW/simH});food.swap();
+  const agU={uTrail:trail.a.t,uEdge:edgeT.t,uFood:food.a.t,uRes:[simW,simH],uSA:P.sa,uSD:P.sd,uRA:P.ra,uSpeed:P.speed,uEdgeW:P.edge,uFoodW:3,uPhoto:P.photo,uResp:P.respawn};
+  if(needInit){pass(pAgent,agents.b.f,AW,AW,{uAg:agents.a.t,...agU,uFrame:frame,uForce:1});agents.swap();needInit=false;}
+  const dep=P.dep*simW*simH/(AW*AW);
+  for(let i=0;i<P.steps;i++){frame++;
+    pass(pAgent,agents.b.f,AW,AW,{uAg:agents.a.t,...agU,uTrail:trail.a.t,uFrame:frame,uForce:0});agents.swap();
+    pass(pDiff,trail.b.f,simW,simH,{uTrail:trail.a.t,uTx:tx,uDecay:P.decay,uDiff:P.diffuse});
+    bindU(pDep,{uAg:agents.a.t,uAW:AW,uDep:dep});
+    gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.drawArrays(gl.POINTS,0,AW*AW);gl.disable(gl.BLEND);
+    trail.swap();}
+  pass(pDisp,null,cv.width,cv.height,{uTrail:trail.a.t,uSrc:srcTex,uEdge:edgeT.t,uFood:food.a.t,uScale:scale,uMirror:mirror?1:0,
+    uCam:P.cam,uSat:P.camSat,uGain:P.gain,uEdgeShow:P.edgeShow,uTime:t%100,uC1:pal[0],uC2:pal[1],uC3:pal[2]});
+  if(rec||snapReq)grab();
+  if(snapReq){snapReq=false;try{const d=atob(cap.toDataURL('image/png').split(',')[1]),u=new Uint8Array(d.length);for(let i=0;i<d.length;i++)u[i]=d.charCodeAt(i);saveBlob(new Blob([u],{type:'image/png'}),`spor_${stamp()}.png`);}catch(e){toast('Foto fehlgeschlagen');}}
+}
+applyPreset('MYZEL');
+requestAnimationFrame(loop);
+$('#goLive').onclick=async()=>{$('#startOv').hidden=true;await startLive();if(!stream)setTimeout(()=>$('#bSrc').click(),400);};
+$('#goDemo').onclick=()=>{$('#startOv').hidden=true;toast('Quelle ◐ → Kamera. Finger = Nährstoff.',3000);};
+// Home-Bildschirm-Icon
+try{const ic=document.createElement('canvas');ic.width=ic.height=180;const x=ic.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,180,180);
+  x.strokeStyle='#ffb347';x.lineCap='round';
+  (function br(px,py,a,l,w,d){if(d>7)return;const nx=px+Math.cos(a)*l,ny=py+Math.sin(a)*l;x.lineWidth=w;x.beginPath();x.moveTo(px,py);x.lineTo(nx,ny);x.stroke();
+    br(nx,ny,a-.45,l*.74,w*.68,d+1);br(nx,ny,a+.38,l*.7,w*.68,d+1);})(90,165,-Math.PI/2,42,9,0);
+  const l=document.createElement('link');l.rel='apple-touch-icon';l.href=ic.toDataURL('image/png');document.head.appendChild(l);
+  const f=document.createElement('link');f.rel='icon';f.href=l.href;document.head.appendChild(f);}catch(e){}
+})();
+</script>
+</body>
+</html>
